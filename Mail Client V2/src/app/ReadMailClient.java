@@ -1,11 +1,22 @@
 package app;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,12 +30,21 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.xml.security.utils.JavaUtils;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
 
+import certificat.KeyStoreReader;
+import kripto.AsimmetricKeyDecryption;
+import signature.VerifySignatureEnveloped;
 import support.MailHelper;
 import support.MailReader;
 import util.Base64;
@@ -38,6 +58,13 @@ public class ReadMailClient extends MailClient {
 	private static final String KEY_FILE = "./data/session.key";
 	private static final String IV1_FILE = "./data/iv1.bin";
 	private static final String IV2_FILE = "./data/iv2.bin";
+	
+	private static final String userB_jks = "./data/userB.jks";
+	private static final String userA_cer = "./data/userA.cer";
+	private static final String key_alias = "userB";
+	private static final String File_Path = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\poslataPoruka.xml";
+	private static final String Out_Path = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\dekriptovanaPoruka.xml";
+	private static final String Out_Path2 = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\gmailDekriptovanaPoruka.xml";
 	
 	public static void main(String[] args) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException, MessagingException, NoSuchPaddingException, InvalidAlgorithmParameterException {
         // Build a new authorized API client service.
@@ -75,33 +102,52 @@ public class ReadMailClient extends MailClient {
 	    String answerStr = reader.readLine();
 	    Integer answer = Integer.parseInt(answerStr);
 	    
-		MimeMessage chosenMessage = mimeMessages.get(answer);
+	        
+	  
 	    
-        //TODO: Decrypt a message and decompress it. The private key is stored in a file.
-		Cipher aesCipherDec = Cipher.getInstance("AES/CBC/PKCS5Padding");
-		SecretKey secretKey = new SecretKeySpec(JavaUtils.getBytesFromFile(KEY_FILE), "AES");
+	  //preuzimanje enkriptovane poruke
+		MimeMessage chosenMessage = mimeMessages.get(answer);
+		String mailBodyCSV=MailHelper.getText(chosenMessage);
+	
+
+		//dobavljanje privatnog kljuca korisnika B
+		KeyStore keystore= KeyStoreReader.readKeyStore(userB_jks, "4567".toCharArray());
+		Certificate certificate = KeyStoreReader.getCertificateFromKeyStore(keystore, key_alias);
+		PrivateKey korisnikBPrivateKey  = KeyStoreReader.getPrivateKeyFromKeyStore(keystore, key_alias, "4567".toCharArray());
 		
+		Document doc = AsimmetricKeyDecryption.loadDocument(File_Path);
+		doc = AsimmetricKeyDecryption.decrypt(doc, korisnikBPrivateKey);
+		AsimmetricKeyDecryption.saveDocument(doc, Out_Path);
+        System.out.println("File decrypted...");
 		
-		byte[] iv1 = JavaUtils.getBytesFromFile(IV1_FILE);
-		IvParameterSpec ivParameterSpec1 = new IvParameterSpec(iv1);
-		aesCipherDec.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec1);
+        boolean result = VerifySignatureEnveloped.verifySignature(doc);
+		System.out.println("Verified = " + result);
+        
 		
-		String str = MailHelper.getText(chosenMessage);
-		byte[] bodyEnc = Base64.decode(str);
+		String gmailMessage =MailHelper.getText(chosenMessage);
 		
-		String receivedBodyTxt = new String(aesCipherDec.doFinal(bodyEnc));
-		String decompressedBodyText = GzipUtil.decompress(Base64.decode(receivedBodyTxt));
-		System.out.println("Body text: " + decompressedBodyText);
+
 		
-		
-		byte[] iv2 = JavaUtils.getBytesFromFile(IV2_FILE);
-		IvParameterSpec ivParameterSpec2 = new IvParameterSpec(iv2);
-		//inicijalizacija za dekriptovanje
-		aesCipherDec.init(Cipher.DECRYPT_MODE, secretKey, ivParameterSpec2);
-		
-		//dekompresovanje i dekriptovanje subject-a
-		String decryptedSubjectTxt = new String(aesCipherDec.doFinal(Base64.decode(chosenMessage.getSubject())));
-		String decompressedSubjectTxt = GzipUtil.decompress(Base64.decode(decryptedSubjectTxt));
-		System.out.println("Subject text: " + new String(decompressedSubjectTxt));
+        
 	}
+	private static PublicKey getKorisnikApublicKey() throws KeyStoreException, NoSuchProviderException, 
+	NoSuchAlgorithmException, CertificateException, FileNotFoundException, IOException {
+		
+		//kreiranje keystore
+		KeyStore ksInstanca = KeyStore.getInstance("JKS", "SUN");
+		File file = new File("./data/userB.jks");
+		ksInstanca.load(new FileInputStream(file), "4567".toCharArray());
+		//citanje iz keystore-a
+		Certificate cer = ksInstanca.getCertificate("userA");
+		return cer.getPublicKey();
+	}
+	
+	private static Document toXmlDocument(String str) throws ParserConfigurationException, SAXException, IOException{
+        
+        DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = docBuilderFactory.newDocumentBuilder();
+        Document document = docBuilder.parse(new InputSource(new StringReader(str)));
+       
+        return document;
+   }
 }

@@ -99,7 +99,7 @@ public class WriteMailClient extends MailClient {
     		
     		//dobavljanje javnog kljuca userB
     		KeyStore keyStoreUserB = KeyStoreReader.readKeyStore(userB_jks, "4567".toCharArray());
-    		Certificate certUserB = KeyStoreReader.getCertificateFromKeyStore(keyStoreUserB, "userb");
+    		Certificate certUserB = KeyStoreReader.getCertificateFromKeyStore(keyStoreUserB, "userB");
     		PublicKey javniKorisnikBKljuc = KeyStoreReader.getPublicKeyFromCertificate(certUserB);
     		
     		
