@@ -87,8 +87,8 @@ public class WriteMailClient extends MailClient {
             Transformer transformer = transformerFactory.newTransformer();
             
            
-            PrivateKey pk = SignEnveloped.readPrivateKey(userA_jks, "1234", "userA");
-    		Certificate cert = SignEnveloped.readCertificate(userA_jks, "1234", "userA");
+            PrivateKey pk = SignEnveloped.readPrivateKey(userA_jks, "1234", "usera");
+    		Certificate cert = SignEnveloped.readCertificate(userA_jks, "1234", "usera");
     		System.out.println("cert : "+cert);
     		System.out.println("private key: " + pk);
     		
@@ -99,7 +99,7 @@ public class WriteMailClient extends MailClient {
     		
     		//dobavljanje javnog kljuca userB
     		KeyStore keyStoreUserB = KeyStoreReader.readKeyStore(userB_jks, "4567".toCharArray());
-    		Certificate certUserB = KeyStoreReader.getCertificateFromKeyStore(keyStoreUserB, "userB");
+    		Certificate certUserB = KeyStoreReader.getCertificateFromKeyStore(keyStoreUserB, "userb");
     		PublicKey javniKorisnikBKljuc = KeyStoreReader.getPublicKeyFromCertificate(certUserB);
     		
     		

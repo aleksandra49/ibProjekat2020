@@ -61,10 +61,9 @@ public class ReadMailClient extends MailClient {
 	
 	private static final String userB_jks = "./data/userB.jks";
 	private static final String userA_cer = "./data/userA.cer";
-	private static final String key_alias = "userB";
+	private static final String key_alias = "userb";
 	private static final String File_Path = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\poslataPoruka.xml";
 	private static final String Out_Path = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\dekriptovanaPoruka.xml";
-	private static final String Out_Path2 = "C:\\Users\\Gogi\\git\\ib-novi\\Mail Client V2\\data\\gmailDekriptovanaPoruka.xml";
 	
 	public static void main(String[] args) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException, MessagingException, NoSuchPaddingException, InvalidAlgorithmParameterException {
         // Build a new authorized API client service.
@@ -138,7 +137,7 @@ public class ReadMailClient extends MailClient {
 		File file = new File("./data/userB.jks");
 		ksInstanca.load(new FileInputStream(file), "4567".toCharArray());
 		//citanje iz keystore-a
-		Certificate cer = ksInstanca.getCertificate("userA");
+		Certificate cer = ksInstanca.getCertificate("usera");
 		return cer.getPublicKey();
 	}
 	
